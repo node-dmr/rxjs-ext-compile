@@ -2,7 +2,7 @@
  * @Author: qiansc
  * @Date: 2018-11-19 14:39:47
  * @Last Modified by: qiansc
- * @Last Modified time: 2018-11-22 23:42:31
+ * @Last Modified time: 2018-11-23 12:52:55
  */
 
 import * as yaml from "js-yaml";
@@ -37,5 +37,5 @@ const conf = yaml.safeLoad(str);
 
 const compiler = new Compiler();
 
-compiler.addDependence(rxjsExt);
+compiler.addDependence(rxjsExt, "");
 compiler.parse(conf);

@@ -1,13 +1,7 @@
-import * as FS from "fs";
-import * as yaml from "js-yaml";
-import * as path from "path";
 import { Observable } from "rxjs";
-import { FunctionDeclaration, IndentationText, NewLineKind, Project, QuoteKind, SourceFile } from "ts-simple-ast";
+import { IndentationText, NewLineKind, Project, QuoteKind, SourceFile } from "ts-simple-ast";
 import { Syntax as YSyntax } from "./syntax";
-import { Config, IFunction, Scope } from "./types";
-
-const dir = path.resolve(__dirname, "../../../");
-const config = yaml.safeLoad(FS.readFileSync(path.resolve(dir, "configuration.yml"), "utf8"));
+import { IFunction, Scope } from "./types";
 
 export class Compiler {
   private static unique(f: IFunction) {
@@ -22,7 +16,8 @@ export class Compiler {
   private project: Project;
   private sourceFile: SourceFile;
 
-  constructor() {
+  constructor(option?: {tsconfig?: string}) {
+    option = option || {};
     this.project = new Project({
       addFilesFromTsConfig: false,
       manipulationSettings: {
@@ -33,7 +28,7 @@ export class Compiler {
         // Single or Double
         quoteKind: QuoteKind.Double,
       },
-      tsConfigFilePath: path.resolve(dir, config.tsconfig),
+      tsConfigFilePath: option.tsconfig,
       // useVirtualFileSystem: true,
     });
     this.sourceFile = this.project.createSourceFile("file.ts");
@@ -43,13 +38,14 @@ export class Compiler {
     };
   }
 
-  public addDependence(arr: IFunction[]) {
+  public addDependence(arr: IFunction[], module: string) {
     const map: {[index: string]: boolean} = {};
     this.scope.dependences.forEach((f) => {
       map[Compiler.unique(f)] = true;
     }),
     arr.forEach((f) => {
       if (!map[Compiler.unique(f)]) {
+        f.module = module;
         map[Compiler.unique(f)] = true;
         this.scope.dependences.push(f);
       }

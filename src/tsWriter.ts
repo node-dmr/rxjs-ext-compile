@@ -2,10 +2,10 @@
  * @Author: qiansc
  * @Date: 2018-11-22 13:15:13
  * @Last Modified by: qiansc
- * @Last Modified time: 2018-11-23 08:34:26
+ * @Last Modified time: 2018-11-23 12:54:01
  */
 import { SourceFile, VariableDeclarationKind } from "ts-simple-ast";
-import { YNode, YObject, YStatement, YString } from "./ynodes";
+import { YImport, YNode, YObject, YStatement, YString } from "./ynodes";
 
 export class TsWriter {
   private sourceFile: SourceFile;
@@ -18,7 +18,9 @@ export class TsWriter {
     // do
   }
   private writeNode(node: YNode) {
-    if (node instanceof YStatement) {
+    if (node instanceof YImport) {
+      this.writeImport(node);
+    } else if (node instanceof YStatement) {
       this.writeStatement(node);
     }
   }
@@ -47,6 +49,20 @@ export class TsWriter {
       variableStatement.replaceWithText(variableStatement.getText().replace(/^(const|let)\s/, ""));
     }
   }
+
+  private writeImport(ip: YImport) {
+    const arr: string[] = [];
+    ip.each((f) => {
+      arr.push(f);
+    });
+    this.sourceFile.addImportDeclaration({
+      // defaultImport?: string;
+      // namespaceImport?: string;
+      moduleSpecifier: ip.module,
+      namedImports: arr,
+    });
+  }
+
   private getVariableText(node: YNode) {
     if (node instanceof YStatement) {
       this.writeStatement(node);

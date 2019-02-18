@@ -2,16 +2,38 @@
  * @Author: qiansc
  * @Date: 2018-11-19 18:13:17
  * @Last Modified by: qiansc
- * @Last Modified time: 2018-11-23 00:14:28
+ * @Last Modified time: 2018-11-23 19:36:41
  */
 import { from, Observable } from "rxjs";
 import { concatAll, filter, find, map, mergeAll, take } from "rxjs/operators";
+import { YOperator } from "./operator";
 import { parameter } from "./parameter";
+import { Syntax } from "./syntax";
 import { IFunction, IParameter, ParameterConfig } from "./types";
 import { YNode, YObject, YStatement } from "./ynodes";
 
-export class YObservable extends YObject {
-  constructor(private paramNodes: YObject[], private type: IFunction) {
+export class PipeAble extends YObject {
+  protected main: string = "";
+  protected operators: YOperator[] = [];
+  constructor(value: string) {
+    super(value);
+    this.main = value;
+  }
+  public pipe(op: YOperator) {
+    this.operators.push(op);
+    this.updateText();
+  }
+  protected updateText() {
+    const opstring: string[] = [];
+    this.operators.forEach((op) => {
+      opstring.push(op.value);
+    });
+    this.value = this.main + (this.operators.length ? `.pipe(\n${opstring.join(",\n")}\n)` : "") ;
+  }
+}
+
+export class YObservable extends PipeAble {
+  constructor(private paramNodes: YObject[], public type: IFunction) {
     super("");
     let stack: string[] = [];
     let cache: string[] = [];
@@ -24,97 +46,7 @@ export class YObservable extends YObject {
         cache = [];
       }
     });
-    this.value = type.name + "(" + stack.join(",") + ")";
+    this.main = type.name + "(" + stack.join(",") + ")";
+    this.updateText();
   }
-}
-
-// export class YObservable extends YNode {
-//   public static isObservableReturnType(type: string): string | false {
-//     const match = type.match(/Observable\<(\w+)\>/);
-//     return (match && match[1]) || false;
-//   }
-//   private parameters: ParameterConfig[];
-//   constructor(private name: string, params: null | ParameterConfig | ParameterConfig[], private scope: Scope) {
-//     super();
-//     // do
-//   }
-//   // cp.forEach();
-// }
-
-/**
- * source:
- *  - fromHttp:
- *  - op...:
- *
- * source:
- *  - file
- *
- */
-
-function uniqueKey(obj: any): string | false {
-  const keys = Object.keys(obj);
-  if (keys.length === 1) {return keys[0]; }
-  return false;
-}
-function isObservableReturnType(type: string): string | false {
-    const match = type.match(/Observable\<(\w+)\>/);
-    return (match && match[1]) || false;
-}
-
-export function isObservable(opconf: any, nodes: YNode[] , dependences: IFunction[]): YObservable | YObject | false {
-  // {fromHttp: "xx" / [..]} {source: null}
-  const name = uniqueKey(opconf);
-  if (!name) {return false; }
-
-  const matchPrams = getTypesFromDeps(name, opconf[name], dependences); // fromHttp  "x", []
-  if (matchPrams) {
-    return new YObservable(matchPrams[0], matchPrams[1]);
-  }
-  let declared = false;
-    // {source: null}
-  nodes.forEach((node) => {
-    if ((node instanceof YStatement) && node.name === name) { declared = true; }
-  });
-  if (declared) {return new YObject(name); }
-
-  return false;
-}
-
-function getTypesFromDeps(name: string, params: null | ParameterConfig | ParameterConfig[],
-                          dependences: IFunction[]): [YObject[], IFunction] | boolean {
-  let result: YObject[] | boolean = false;
-  let matchType: IFunction | boolean = false;
-  if (params === null) {params = []; }
-  if (!Array.isArray(params)) {params = [params]; }
-  const parameters = params;
-  from(dependences).pipe(
-    // 匹配returnType
-    map((f) => {matchType = f; return f; }),
-    filter((f) => f.name === name && !!isObservableReturnType(f.returnType)),
-    map((f) => matchParameters(f.parameters, parameters)),
-    take(1),
-  ).subscribe(
-    (ynodes) => {
-      result = ynodes;
-    },
-  );
-  return (result && matchType ) ? [result, matchType as IFunction] : false;
-}
-
-function matchParameters(iParameters: IParameter[], configs: ParameterConfig[]): YObject[] {
-  let params: any[] | false = [];
-  from(iParameters).pipe( // 逐个比对parameters
-    map((ip, i) => {
-      if (configs[i] === undefined) {
-        // 如果不是必选项目
-        if (ip.hasQuestionToken) {return new YObject("undefined"); } else { params = false; }
-      }
-      return parameter(configs[i], ip);
-    }),
-  ).subscribe(
-    (v) => {
-      if (params) {params.push(v); }
-    },
-  );
-  return params;
 }

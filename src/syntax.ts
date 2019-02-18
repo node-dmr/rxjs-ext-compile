@@ -1,26 +1,40 @@
-import { isObservable } from "./observable";
-import { TsWriter } from "./tsWriter";
-import { IFunction } from "./types";
-import { YNode, YStatement, YString} from "./ynodes";
 /*
  * @Author: qiansc
  * @Date: 2018-11-22 09:55:22
  * @Last Modified by: qiansc
- * @Last Modified time: 2018-11-23 00:07:40
+ * @Last Modified time: 2018-11-23 19:05:44
  */
 
-export class Syntax {
-  private nodes: YNode[] = [];
+import { generateObservable, generateOperator } from "./generator";
+import { YObservable } from "./observable";
+import { TsWriter } from "./tsWriter";
+import { IFunction } from "./types";
+import { YImport, YNode, YStatement, YString} from "./ynodes";
 
-  constructor(conf: JSON, private deps: IFunction[]) {
+export class Syntax {
+  public nodes: YNode[] = [];
+  private imports: YImport[] = [];
+
+  constructor(conf: JSON, public deps: IFunction[]) {
     this.parseJSON(conf);
   }
   public isStatement(key: string, value: any): YStatement | false {
     if (!Array.isArray(value)) {
       return new YStatement(key, new YString(JSON.stringify(value)));
     }
-    const ob = isObservable(value[0], this.nodes, this.deps);
+    const nexts = [...value];
+    const ob = generateObservable(nexts.shift(), this);
     if (ob) {
+      if (nexts.length) {
+        nexts.forEach((opc) => {
+          const op = generateOperator(opc , this);
+          if (op) {
+            ob.pipe(op);
+          } else {
+            throw new Error("Operator Config Error: " + JSON.stringify(opc));
+          }
+        });
+      }
       return new YStatement(key, ob);
     }
     return false;
@@ -28,6 +42,17 @@ export class Syntax {
 
   public getType(name: string) {
     // do
+  }
+  public getYImport(module: string) {
+    let yi: YImport | false = false;
+    this.imports.forEach((i) => {
+      if (i.module === module) {yi =  i; }
+    });
+    if (!yi) {
+      yi = new YImport(module);
+      this.imports.push(yi);
+    }
+    return  yi;
   }
 
   public parseJSON(json: JSON) {
@@ -37,7 +62,7 @@ export class Syntax {
     });
   }
   public getTypescriptWriter(): TsWriter {
-    return new TsWriter(this.nodes);
+    return new TsWriter(([] as YNode[]).concat(this.imports).concat(this.nodes));
   }
 
 }

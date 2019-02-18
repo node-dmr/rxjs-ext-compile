@@ -1,6 +1,7 @@
 import { SourceFile } from "ts-simple-ast";
 
 export interface IFunction {
+  module: string;
   name: string;
   parameters: IParameter[];
   returnType: string;

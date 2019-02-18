@@ -2,7 +2,7 @@
  * @Author: qiansc
  * @Date: 2018-11-22 22:29:09
  * @Last Modified by: qiansc
- * @Last Modified time: 2018-11-23 00:00:41
+ * @Last Modified time: 2018-11-23 19:44:02
  */
 import { IFunction, IParameter, ParameterConfig } from "./types";
 import { YNode, YObject, YStatement } from "./ynodes";
@@ -19,7 +19,7 @@ export function parameter(val: any, ip: IParameter): YObject {
     if (types.indexOf("RegExp") > -1) {return new YObject(val); }
   }
   try {
-    if (typeof eval.apply(null, val) === "function") {
+    if (typeof eval.call(null, val) === "function") {
       if (isFunction(types)) {
         return new YObject(val);
       }
